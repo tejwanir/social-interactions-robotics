@@ -23,8 +23,6 @@ class RobotEnv(gym.Env):
         if not os.path.exists(fullpath):
             raise IOError('File {} does not exist'.format(fullpath))
 
-        self._set_alphabets()
-
         model = mujoco_py.load_model_from_path(fullpath)
         self.sim = mujoco_py.MjSim(model, nsubsteps=n_substeps)
         self.viewer = None
@@ -78,7 +76,7 @@ class RobotEnv(gym.Env):
             done = True
         else:
             done = self._check_done(obs)
-        reward = self.compute_reward(obs, info)
+        reward = self._compute_reward(obs, info)
         return obs, reward, done, info
 
     def reset(self):
@@ -178,6 +176,12 @@ class RobotEnv(gym.Env):
         """
         Check if agent has reached the end of the episode based on
         environment-specific conditions (i.e. block falls of table).
+        """
+        raise NotImplementedError()
+
+    def _compute_reward(self, obs, info):
+        """
+        Compute the reward received from the environment
         """
         raise NotImplementedError()
 
