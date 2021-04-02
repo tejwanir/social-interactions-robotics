@@ -26,5 +26,5 @@ def main(headless):
 
 
 if __name__ == '__main__':
-    main(headless=True)
+    main(headless=False)
 
