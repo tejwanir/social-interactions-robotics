@@ -11,6 +11,7 @@ def main(headless):
     init_qpos = FetchThreeObjEnv.sample_env()
     env = FetchThreeObjEnv(n_substeps=20,
                            initial_qpos=init_qpos)
+    print(env._get_robot_pos_relative_to_table(0, (0,1), 0.2, 0.3))
     while True:
         action = np.random.uniform(low=-1., high=1., size=(env.action_space.shape[0]))
         print(' action:', action)

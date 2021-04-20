@@ -60,12 +60,13 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
     """Superclass for all MuJoCo Fetch environments.
     """
 
-    def __init__(self, initial_qpos, n_substeps, timelimit=50):
+    def __init__(self, initial_qpos, n_substeps, initial_robot_pos=None, timelimit=50):
         """Initializes a new Fetch environment.
 
         Args:
             initial_qpos (dict): a dictionary of joint names and values that define the initial configuration
             n_substeps (int): number of substeps the simulation runs on every call to step
+            initial_robot_pos (list): a list of tuples specifying the positions of the robots
             timelimit (int): number of time steps before the agent fails due to timeout
         """
         model_path = MODEL_XML_PATH
@@ -121,6 +122,50 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
 
     # RobotEnv methods
     # ----------------------------
+    def _get_table(self, table_index):
+        table_id = self.sim.model.body_name2id('table' + str(table_index))
+        table_geom_id = self.sim.model.geom_name2id('table' + str(table_index))
+        
+        table_pos = self.sim.data.body_xpos[table_id]
+        table_size = self.sim.model.geom_size[table_geom_id]
+
+        return table_pos, table_size
+    
+    def _get_floor_level(self):
+        # TODO: Hardcoded
+        return 0.
+
+    def _get_robot_pos_relative_to_table(self, table_index, side, offset, distance):
+        '''
+        table_index (int): the index of the desired table
+        side (int, int): the side of the table the robot should be on (x, z). Can be 
+                         (0,1), (0,-1), (1,0), or (-1,0)
+        offset (float): the offset from the center of side
+        distance (float): the distance from the table
+        '''
+
+        table_pos, table_size = self._get_table(table_index)
+        
+        assert side == (1,0) or side == (-1,0) or side == (0,1) or side == (0,-1)
+
+        center = None
+        displacement = None
+        if (side[0] > 0):
+            center = np.array([table_size[0] + table_pos[0], table_pos[1], 0]) 
+            displacement = np.array([distance, offset, 0])
+        elif (side[0] < 0):
+            center = np.array([-table_size[0] + table_pos[0], table_pos[1], 0]) 
+            displacement = np.array([-distance, offset, 0])
+        elif (side[1] > 0):
+            center = np.array([table_pos[0], table_size[1] + table_pos[1], 0])
+            displacement = np.array([offset, distance, 0])
+        else:
+            center = np.array([table_pos[0], -table_size[1] + table_pos[1], 0])
+            displacement = np.array([offset, -distance, 0])
+
+        new_pos = center + displacement
+        new_pos[2] = self._get_floor_level()
+        return new_pos
 
     def _step_callback(self):
         self.current_time += 1
