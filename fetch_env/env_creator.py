@@ -30,6 +30,91 @@ BASE_XML = '''
 </mujoco>
 '''
 
+SHARED_XML = '''
+<mujoco>
+    <asset>
+        <texture type="skybox" builtin="gradient" rgb1="0.44 0.85 0.56" rgb2="0.46 0.87 0.58" width="32" height="32"></texture>
+        <texture name="texture_block" file="block.png" gridsize="3 4" gridlayout=".U..LFRB.D.."></texture>
+
+        <material name="floor_mat" specular="0" shininess="0.5" reflectance="0" rgba="0.2 0.2 0.2 1"></material>
+        <material name="table_mat" specular="0" shininess="0.5" reflectance="0" rgba="0.93 0.93 0.93 1"></material>
+        <material name="block_mat" specular="0" shininess="0.5" reflectance="0" rgba="0.2 0.2 0.2 1"></material>
+        <material name="red_mat" specular="0" shininess="0.5" reflectance="0" rgba="1 0 0 1"></material>
+        <material name="green_mat" specular="0" shininess="0.5" reflectance="0" rgba="0 1 0 1"></material>
+        <material name="blue_mat" specular="0" shininess="0.5" reflectance="0" rgba="0 0 1 1"></material>
+        <material name="puck_mat" specular="0" shininess="0.5" reflectance="0" rgba="0.2 0.2 0.2 1"></material>
+{robot_shared_1}
+    </asset>
+
+    <equality>
+        <weld body1="robot0:mocap" body2="robot0:gripper_link" solimp="0.9 0.95 0.001" solref="0.02 1"></weld>
+    </equality>
+
+    <contact>
+        <exclude body1="robot0:r_gripper_finger_link" body2="robot0:l_gripper_finger_link"></exclude>
+        <exclude body1="robot0:torso_lift_link" body2="robot0:torso_fixed_link"></exclude>
+        <exclude body1="robot0:torso_lift_link" body2="robot0:shoulder_pan_link"></exclude>
+    </contact>
+    
+{robot_shared_2}
+
+    <sensor>
+        <touch name="robot0:l_gripper_touch" site="robot0:l_gripper_touch"></touch>
+        <touch name="robot0:r_gripper_touch" site="robot0:r_gripper_touch"></touch>
+    </sensor>
+</mujoco>
+'''
+
+ROBOT_SHARED_XML_1 = '''
+        <material name="{name}:geomMat" shininess="0.03" specular="0.4"></material>
+        <material name="{name}:gripper_finger_mat" shininess="0.03" specular="0.4" reflectance="0"></material>
+        <material name="{name}:gripper_mat" shininess="0.03" specular="0.4" reflectance="0"></material>
+        <material name="{name}:arm_mat" shininess="0.03" specular="0.4" reflectance="0"></material>
+        <material name="{name}:head_mat" shininess="0.03" specular="0.4" reflectance="0"></material>
+        <material name="{name}:torso_mat" shininess="0.03" specular="0.4" reflectance="0"></material>
+        <material name="{name}:base_mat" shininess="0.03" specular="0.4" reflectance="0"></material>
+
+        <mesh file="base_link_collision.stl" name="{name}:base_link"></mesh>
+        <mesh file="bellows_link_collision.stl" name="{name}:bellows_link"></mesh>
+        <mesh file="elbow_flex_link_collision.stl" name="{name}:elbow_flex_link"></mesh>
+        <mesh file="estop_link.stl" name="{name}:estop_link"></mesh>
+        <mesh file="forearm_roll_link_collision.stl" name="{name}:forearm_roll_link"></mesh>
+        <mesh file="gripper_link.stl" name="{name}:gripper_link"></mesh>
+        <mesh file="head_pan_link_collision.stl" name="{name}:head_pan_link"></mesh>
+        <mesh file="head_tilt_link_collision.stl" name="{name}:head_tilt_link"></mesh>
+        <mesh file="l_wheel_link_collision.stl" name="{name}:l_wheel_link"></mesh>
+        <mesh file="laser_link.stl" name="{name}:laser_link"></mesh>
+        <mesh file="r_wheel_link_collision.stl" name="{name}:r_wheel_link"></mesh>
+        <mesh file="torso_lift_link_collision.stl" name="{name}:torso_lift_link"></mesh>
+        <mesh file="shoulder_pan_link_collision.stl" name="{name}:shoulder_pan_link"></mesh>
+        <mesh file="shoulder_lift_link_collision.stl" name="{name}:shoulder_lift_link"></mesh>
+        <mesh file="upperarm_roll_link_collision.stl" name="{name}:upperarm_roll_link"></mesh>
+        <mesh file="wrist_flex_link_collision.stl" name="{name}:wrist_flex_link"></mesh>
+        <mesh file="wrist_roll_link_collision.stl" name="{name}:wrist_roll_link"></mesh>
+        <mesh file="torso_fixed_link.stl" name="{name}:torso_fixed_link"></mesh>
+'''
+
+ROBOT_SHARED_XML_2 = '''
+    <default>
+        <default class="{name}:fetch">
+            <geom margin="0.001" material="{name}:geomMat" rgba="1 1 1 1" solimp="0.99 0.99 0.01" solref="0.01 1" type="mesh" user="0"></geom>
+            <joint armature="1" damping="50" frictionloss="0" stiffness="0"></joint>
+
+            <default class="{name}:fetchGripper">
+                <geom condim="4" margin="0.001" type="box" user="0" rgba="0.356 0.361 0.376 1.0"></geom>
+                <joint armature="100" damping="1000" limited="true" solimplimit="0.99 0.999 0.01" solreflimit="0.01 1" type="slide"></joint>
+            </default>
+
+            <default class="{name}:grey">
+                <geom rgba="0.356 0.361 0.376 1.0"></geom>
+            </default>
+            <default class="{name}:blue">
+                <geom rgba="0.086 0.506 0.767 1.0"></geom>
+            </default>
+        </default>
+    </default>
+'''
+
 TABLE_XML = '''
 <body pos="{pos}" name="{name}">
 	<geom size="{size}" type="box" mass="2000" material="table_mat"></geom>
@@ -134,12 +219,21 @@ class EnvCreator():
         self.create_xml()
 
     def create_xml(self, path_to_xml=None):
+        # Create the shared xml that defines all of the classes
+        shared_1 = ''
+        shared_2 = ''
+        for i, config in enumerate(self.robot_configs):
+            shared_1 += ROBOT_SHARED_XML_1.format(name=config.name)
+            shared_2 += ROBOT_SHARED_XML_2.format(name=config.name)
+        shared_xml = SHARED_XML.format(robot_shared_1=shared_1, robot_shared_2=shared_2)
+
+        # Create the env xml
         body_xml = ''
         for i, config in enumerate(self.robot_configs):   
-            robot_xml = open(os.path.join('fetch_env', 'assets', 'fetch', 'robot.xml'), 'r').read()
+            robot_xml = open(os.path.join('fetch_env', 'assets', 'full_env', 'robot.xml'), 'r').read()
             
             # Remove the first and last lines to get rid of the <mujoco> tags
-            robot_xml = '\n'.join(robot_xml.split('\n')[1:-1])
+            robot_xml = '\n'.join(robot_xml.rstrip().split('\n')[1:-1])
             
             robot_xml = robot_xml.replace('robot0', config.name)
             body_xml += robot_xml + '\n\n'
@@ -159,12 +253,16 @@ class EnvCreator():
 
         full_xml = BASE_XML.format(body=body_xml)
         if path_to_xml:
-            f = open(path_to_xml, "w")
+            f = open(os.path.join(path_to_xml, 'shared.xml'), "w")
+            f.write(shared_xml)
+            f.close()
+            
+            f = open(os.path.join(path_to_xml, 'env.xml'), "w")
             f.write(full_xml)
             f.close()
         else:
-            return full_xml
+            return shared_xml, full_xml
 
 if __name__  == '__main__':
     env_creator = EnvCreator(os.path.join('fetch_env', 'test_env.json'))
-    env_creator.create_xml(os.path.join('fetch_env', 'env.xml'))
+    env_creator.create_xml(os.path.join('fetch_env', 'assets', 'full_env'))

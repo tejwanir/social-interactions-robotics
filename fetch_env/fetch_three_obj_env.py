@@ -8,7 +8,8 @@ from fetch_env import rotations, robot_env, mujoco_utils
 from fetch_env.env_creator import load_configs_from_json
 
 # Ensure we get the path separator correct on windows
-MODEL_XML_PATH = os.path.join('fetch', 'pnp_three_objects.xml')
+# MODEL_XML_PATH = os.path.join('fetch', 'pnp_three_objects.xml')
+MODEL_XML_PATH = os.path.join('full_env', 'env.xml')
 
 # Initial positions of the robot and the objects
 INIT_POS = {
@@ -61,7 +62,7 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
     """Superclass for all MuJoCo Fetch environments.
     """
 
-    def __init__(self, initial_qpos, n_substeps, initial_robot_pos=None, timelimit=50):
+    def __init__(self, initial_qpos, robot_configs, table_configs, object_configs, n_substeps, initial_robot_pos=None, timelimit=50):
         """Initializes a new Fetch environment.
 
         Args:
@@ -70,6 +71,9 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
             initial_robot_pos (list): a list of tuples specifying the positions of the robots
             timelimit (int): number of time steps before the agent fails due to timeout
         """
+        self.robot_configs = robot_configs
+        self.table_configs = table_configs
+        self.object_configs = object_configs
         model_path = MODEL_XML_PATH
 
         self.objects = get_obj_names()
@@ -151,7 +155,7 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
         for o_config in object_configs:
             o_name = o_config.name
             if (o_config.pos != None):
-                new_pos['joint:' + o_name] = o_config.pos + o_config.quat
+                new_pos[o_name + ':joint'] = o_config.pos + o_config.quat
             elif (o_config.table_name != None):
                 pass # TODO: Implement this
             else:
@@ -162,7 +166,7 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
                 pos[2] = np.random.uniform(o_config.z_range[0], o_config.z_range[1])
                 new_pos['joint:' + o_name] = pos + quat
         
-        return new_pos
+        return new_pos, robot_configs, table_configs, object_configs
     
     @staticmethod
     def get_position_relative_to_table(table_pos, table_size, side, offset, distance):
@@ -237,7 +241,8 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
         
         # get object features
         object_features = []
-        for obj_name in self.objects:
+        for config in self.object_configs:
+            obj_name = config.name
             object_pos = self.sim.data.get_site_xpos(obj_name)
             # rotations
             object_rot = rotations.mat2euler(self.sim.data.get_site_xmat(obj_name))
@@ -331,9 +336,9 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
         if self.initial_gripper_xpos is None:
             self.init_gripper = np.array([-0.498, 0.005, -0.431]) + \
                     self.sim.data.get_site_xpos('robot0:grip')
-            gripper_target = np.array([-0.498 + initial_qpos['gripper_offset'][0], \
-                    0.005 + initial_qpos['gripper_offset'][1], \
-                    -0.431 + initial_qpos['gripper_offset'][2]]) + \
+            gripper_target = np.array([-0.498 + initial_qpos['robot0:gripper_offset'][0], \
+                    0.005 + initial_qpos['robot0:gripper_offset'][1], \
+                    -0.431 + initial_qpos['robot0:gripper_offset'][2]]) + \
                     self.sim.data.get_site_xpos('robot0:grip')
             gripper_rotation = np.array([1., 0., 1., 0.])
             self.sim.data.set_mocap_pos('robot0:mocap', gripper_target)
@@ -345,7 +350,7 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
             self.init_gripper_pos = gripper_target
             self.init_gripper_rot = gripper_rotation
             self.initial_gripper_xpos = self.sim.data.get_site_xpos('robot0:grip').copy()
-            self.height_offset = self.sim.data.get_site_xpos('objectR')[2]
+            self.height_offset = self.sim.data.get_site_xpos('Small_Square')[2]
         else:  # just move to the stored gripper position if already have one
             self.sim.data.set_mocap_pos('robot0:mocap', self.init_gripper_pos)
             self.sim.data.set_mocap_quat('robot0:mocap', self.init_gripper_rot)
