@@ -2,9 +2,10 @@ import copy
 import mujoco_py
 import numpy as np
 import os
+import json
 
 from fetch_env import rotations, robot_env, mujoco_utils
-
+from fetch_env.env_creator import load_configs_from_json
 
 # Ensure we get the path separator correct on windows
 MODEL_XML_PATH = os.path.join('fetch', 'pnp_three_objects.xml')
@@ -118,35 +119,61 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
             else:
                 continue
         return new_pos
-
-
-    # RobotEnv methods
-    # ----------------------------
-    def _get_table(self, table_index):
-        table_id = self.sim.model.body_name2id('table' + str(table_index))
-        table_geom_id = self.sim.model.geom_name2id('table' + str(table_index))
-        
-        table_pos = self.sim.data.body_xpos[table_id]
-        table_size = self.sim.model.geom_size[table_geom_id]
-
-        return table_pos, table_size
     
-    def _get_floor_level(self):
-        # TODO: Hardcoded
-        return 0.
+    @staticmethod
+    def sample_env_from_json(path_to_json):
+        robot_configs, table_configs, object_configs = load_configs_from_json(path_to_json)    
+        new_pos = {}
 
-    def _get_robot_pos_relative_to_table(self, table_index, side, offset, distance):
+        for r_config in robot_configs:
+            r_name = r_config.name
+            if (r_config.init_pos != None):
+                new_pos[r_name + ':slide0'] = r_config.init_pos[0]
+                new_pos[r_name + ':slide1'] = r_config.init_pos[1]
+                new_pos[r_name + ':slide2'] = r_config.init_pos[2]
+            else:
+                t_config = [
+                    t_config for t_config in table_configs if t_config.name == r_config.table_name
+                ][0]
+                pos = FetchThreeObjEnv.get_position_relative_to_table(
+                    t_config.pos,
+                    t_config.size,
+                    r_config.side,
+                    r_config.offset,
+                    r_config.distance
+                )
+                new_pos[r_name + ':slide0'] = pos[0]
+                new_pos[r_name + ':slide1'] = pos[1]
+                new_pos[r_name + ':slide2'] = pos[2]
+
+            new_pos[r_name + ':gripper_offset'] = [0., 0., 0.15] # TODO: Hardcoded
+
+        for o_config in object_configs:
+            o_name = o_config.name
+            if (o_config.pos != None):
+                new_pos['joint:' + o_name] = o_config.pos + o_config.quat
+            elif (o_config.table_name != None):
+                pass # TODO: Implement this
+            else:
+                pos = [0., 0., 0.]
+                quat = [1., 0., 0., 0.]
+                pos[0] = np.random.uniform(o_config.x_range[0], o_config.x_range[1])
+                pos[1] = np.random.uniform(o_config.y_range[0], o_config.y_range[1])
+                pos[2] = np.random.uniform(o_config.z_range[0], o_config.z_range[1])
+                new_pos['joint:' + o_name] = pos + quat
+        
+        return new_pos
+    
+    @staticmethod
+    def get_position_relative_to_table(table_pos, table_size, side, offset, distance):
         '''
-        table_index (int): the index of the desired table
+        table_pos (np.array): the position of the table
+        table_size (np.array): the half sizes of the table
         side (int, int): the side of the table the robot should be on (x, z). Can be 
                          (0,1), (0,-1), (1,0), or (-1,0)
         offset (float): the offset from the center of side
         distance (float): the distance from the table
         '''
-
-        table_pos, table_size = self._get_table(table_index)
-        
-        assert side == (1,0) or side == (-1,0) or side == (0,1) or side == (0,-1)
 
         center = None
         displacement = None
@@ -164,8 +191,23 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
             displacement = np.array([offset, -distance, 0])
 
         new_pos = center + displacement
-        new_pos[2] = self._get_floor_level()
+        new_pos[2] = 0 # TODO: Hardcoded
         return new_pos
+        
+    # RobotEnv methods
+    # ----------------------------
+    def _get_table(self, table_name):
+        table_id = self.sim.model.body_name2id(table_name)
+        table_geom_id = self.sim.model.geom_name2id(table_name)
+        
+        table_pos = self.sim.data.body_xpos[table_id]
+        table_size = self.sim.model.geom_size[table_geom_id]
+
+        return table_pos, table_size
+    
+    def _get_floor_level(self):
+        # TODO: Hardcoded
+        return 0.
 
     def _step_callback(self):
         self.current_time += 1

@@ -1,4 +1,5 @@
 import numpy as np
+import os
 
 from fetch_env.fetch_three_obj_env import FetchThreeObjEnv
 from mujoco_py import GlfwContext  # Requires GlfwContext so GLEW won't complain
@@ -7,11 +8,11 @@ from mujoco_py import GlfwContext  # Requires GlfwContext so GLEW won't complain
 def main(headless):
     if headless:
         GlfwContext(offscreen=True)
-
+    
+    print(FetchThreeObjEnv.sample_env_from_json(os.path.join("fetch_env", "test_env.json")))
     init_qpos = FetchThreeObjEnv.sample_env()
     env = FetchThreeObjEnv(n_substeps=20,
                            initial_qpos=init_qpos)
-    print(env._get_robot_pos_relative_to_table(0, (0,1), 0.2, 0.3))
     while True:
         action = np.random.uniform(low=-1., high=1., size=(env.action_space.shape[0]))
         print(' action:', action)
