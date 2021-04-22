@@ -67,6 +67,7 @@
         <mesh file="torso_fixed_link.stl" name="robot1:torso_fixed_link"></mesh>
 
     </asset>
+    
 
     <equality>
         <weld body1="robot0:mocap" body2="robot0:gripper_link" solimp="0.9 0.95 0.001" solref="0.02 1"></weld>
@@ -78,7 +79,6 @@
         <exclude body1="robot0:torso_lift_link" body2="robot0:shoulder_pan_link"></exclude>
     </contact>
     
-
     <default>
         <default class="robot0:fetch">
             <geom margin="0.001" material="robot0:geomMat" rgba="1 1 1 1" solimp="0.99 0.99 0.01" solref="0.01 1" type="mesh" user="0"></geom>
@@ -98,6 +98,16 @@
         </default>
     </default>
 
+    <equality>
+        <weld body1="robot1:mocap" body2="robot0:gripper_link" solimp="0.9 0.95 0.001" solref="0.02 1"></weld>
+    </equality>
+
+    <contact>
+        <exclude body1="robot1:r_gripper_finger_link" body2="robot0:l_gripper_finger_link"></exclude>
+        <exclude body1="robot1:torso_lift_link" body2="robot0:torso_fixed_link"></exclude>
+        <exclude body1="robot1:torso_lift_link" body2="robot0:shoulder_pan_link"></exclude>
+    </contact>
+    
     <default>
         <default class="robot1:fetch">
             <geom margin="0.001" material="robot1:geomMat" rgba="1 1 1 1" solimp="0.99 0.99 0.01" solref="0.01 1" type="mesh" user="0"></geom>

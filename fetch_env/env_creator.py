@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import json
+from collections import defaultdict
 
 BASE_XML = '''
 <?xml version="1.0" encoding="utf-8"?>
@@ -45,16 +46,6 @@ SHARED_XML = '''
         <material name="puck_mat" specular="0" shininess="0.5" reflectance="0" rgba="0.2 0.2 0.2 1"></material>
 {robot_shared_1}
     </asset>
-
-    <equality>
-        <weld body1="robot0:mocap" body2="robot0:gripper_link" solimp="0.9 0.95 0.001" solref="0.02 1"></weld>
-    </equality>
-
-    <contact>
-        <exclude body1="robot0:r_gripper_finger_link" body2="robot0:l_gripper_finger_link"></exclude>
-        <exclude body1="robot0:torso_lift_link" body2="robot0:torso_fixed_link"></exclude>
-        <exclude body1="robot0:torso_lift_link" body2="robot0:shoulder_pan_link"></exclude>
-    </contact>
     
 {robot_shared_2}
 
@@ -95,6 +86,16 @@ ROBOT_SHARED_XML_1 = '''
 '''
 
 ROBOT_SHARED_XML_2 = '''
+    <equality>
+        <weld body1="{name}:mocap" body2="robot0:gripper_link" solimp="0.9 0.95 0.001" solref="0.02 1"></weld>
+    </equality>
+
+    <contact>
+        <exclude body1="{name}:r_gripper_finger_link" body2="robot0:l_gripper_finger_link"></exclude>
+        <exclude body1="{name}:torso_lift_link" body2="robot0:torso_fixed_link"></exclude>
+        <exclude body1="{name}:torso_lift_link" body2="robot0:shoulder_pan_link"></exclude>
+    </contact>
+    
     <default>
         <default class="{name}:fetch">
             <geom margin="0.001" material="{name}:geomMat" rgba="1 1 1 1" solimp="0.99 0.99 0.01" solref="0.01 1" type="mesh" user="0"></geom>
@@ -229,19 +230,40 @@ class EnvCreator():
 
         # Create the env xml
         body_xml = ''
+        table_robots = defaultdict(lambda: [])
         for i, config in enumerate(self.robot_configs):   
             robot_xml = open(os.path.join('fetch_env', 'assets', 'full_env', 'robot.xml'), 'r').read()
             
             # Remove the first and last lines to get rid of the <mujoco> tags
             robot_xml = '\n'.join(robot_xml.rstrip().split('\n')[1:-1])
-            
-            robot_xml = robot_xml.replace('robot0', config.name)
+            robot_xml = robot_xml.format(name=config.name)
+
+            # If a table is specified we want to put it inside the tables coordinate frame
+            '''
+            if config.table_name:
+                if (config.side == [1,0]):
+                    robot_xml = robot_xml.format(angle="0 0 3.1415926")
+                elif (config.side == [-1,0]):
+                    robot_xml = robot_xml.format(angle="0 0 0")
+                elif (config.side == [0,1]):
+                    robot_xml = robot_xml.format(angle="0 0 4.7123889")
+                elif (config.side == [0,-1]):
+                    robot_xml = robot_xml.format(angle="0 0 1.5707963")
+                else:
+                    raise ValueError("Side is not a valid value!")
+            else:
+                robot_xml = robot_xml.format(angle="0 0 0")
+            '''
             body_xml += robot_xml + '\n\n'
 
         for i, config in enumerate(self.table_configs):
             pos_str = str(config.pos[0]) + ' ' + str(config.pos[1]) + ' ' + str(config.pos[2])
             size_str = str(config.size[0]) + ' ' + str(config.size[1]) + ' ' + str(config.size[2])
-            table_xml = TABLE_XML.format(name='table' + str(i), pos=pos_str, size=size_str)
+            table_xml = TABLE_XML.format(
+                name=config.name, 
+                pos=pos_str, 
+                size=size_str, 
+            )
             body_xml += table_xml + '\n\n'
         
         for i, config in enumerate(self.object_configs):

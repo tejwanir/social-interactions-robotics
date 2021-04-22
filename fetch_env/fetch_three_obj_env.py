@@ -136,19 +136,18 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
                 new_pos[r_name + ':slide1'] = r_config.init_pos[1]
                 new_pos[r_name + ':slide2'] = r_config.init_pos[2]
             else:
-                t_config = [
-                    t_config for t_config in table_configs if t_config.name == r_config.table_name
-                ][0]
-                pos = FetchThreeObjEnv.get_position_relative_to_table(
-                    t_config.pos,
-                    t_config.size,
+                t_config = list(filter(lambda x: x.name == r_config.table_name, table_configs))[0]
+                pos, angle = FetchThreeObjEnv.get_position_relative_to_table(
                     r_config.side,
                     r_config.offset,
-                    r_config.distance
+                    r_config.distance,
+                    t_config.pos,
+                    t_config.size
                 )
                 new_pos[r_name + ':slide0'] = pos[0]
                 new_pos[r_name + ':slide1'] = pos[1]
                 new_pos[r_name + ':slide2'] = pos[2]
+                new_pos[r_name + ':bottom_hinge'] = angle
 
             new_pos[r_name + ':gripper_offset'] = [0., 0., 0.15] # TODO: Hardcoded
 
@@ -169,34 +168,39 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
         return new_pos, robot_configs, table_configs, object_configs
     
     @staticmethod
-    def get_position_relative_to_table(table_pos, table_size, side, offset, distance):
+    def get_position_relative_to_table(side, offset, distance, table_pos=[0., 0.], table_size=[0., 0.]):
         '''
-        table_pos (np.array): the position of the table
-        table_size (np.array): the half sizes of the table
         side (int, int): the side of the table the robot should be on (x, z). Can be 
                          (0,1), (0,-1), (1,0), or (-1,0)
         offset (float): the offset from the center of side
         distance (float): the distance from the table
+        table_pos (np.array): the position of the table
+        table_size (np.array): the half sizes of the table
         '''
 
         center = None
         displacement = None
+        angle = None
         if (side[0] > 0):
             center = np.array([table_size[0] + table_pos[0], table_pos[1], 0]) 
             displacement = np.array([distance, offset, 0])
+            angle = np.pi
         elif (side[0] < 0):
             center = np.array([-table_size[0] + table_pos[0], table_pos[1], 0]) 
             displacement = np.array([-distance, offset, 0])
+            angle = 0.0
         elif (side[1] > 0):
             center = np.array([table_pos[0], table_size[1] + table_pos[1], 0])
             displacement = np.array([offset, distance, 0])
+            angle = 1.5 * np.pi
         else:
             center = np.array([table_pos[0], -table_size[1] + table_pos[1], 0])
             displacement = np.array([offset, -distance, 0])
+            angle = 0.5 * np.pi
 
         new_pos = center + displacement
         new_pos[2] = 0 # TODO: Hardcoded
-        return new_pos
+        return new_pos, angle
         
     # RobotEnv methods
     # ----------------------------
