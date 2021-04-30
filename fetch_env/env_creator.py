@@ -87,13 +87,13 @@ ROBOT_SHARED_XML_1 = '''
 
 ROBOT_SHARED_XML_2 = '''
     <equality>
-        <weld body1="{name}:mocap" body2="robot0:gripper_link" solimp="0.9 0.95 0.001" solref="0.02 1"></weld>
+        <weld body1="{name}:mocap" body2="{name}:gripper_link" solimp="0.9 0.95 0.001" solref="0.02 1"></weld>
     </equality>
 
     <contact>
-        <exclude body1="{name}:r_gripper_finger_link" body2="robot0:l_gripper_finger_link"></exclude>
-        <exclude body1="{name}:torso_lift_link" body2="robot0:torso_fixed_link"></exclude>
-        <exclude body1="{name}:torso_lift_link" body2="robot0:shoulder_pan_link"></exclude>
+        <exclude body1="{name}:r_gripper_finger_link" body2="{name}:l_gripper_finger_link"></exclude>
+        <exclude body1="{name}:torso_lift_link" body2="{name}:torso_fixed_link"></exclude>
+        <exclude body1="{name}:torso_lift_link" body2="{name}:shoulder_pan_link"></exclude>
     </contact>
     
     <default>

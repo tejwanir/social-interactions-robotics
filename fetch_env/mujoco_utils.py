@@ -25,14 +25,16 @@ def ctrl_set_action(sim, action):
     For position actuators it sets the target relative to the current qpos.
     """
     if sim.model.nmocap > 0:
-        _, action = np.split(action, (sim.model.nmocap * 7, ))
+        # _, action = np.split(action, (sim.model.nmocap * 7, ))
+        action = action[7:,:].copy()
+        action = action.T
     if sim.data.ctrl is not None:
         for i in range(action.shape[0]):
             if sim.model.actuator_biastype[i] == 0:
-                sim.data.ctrl[i] = action[i]
+                sim.data.ctrl[i] = action[i][0]
             else:
                 idx = sim.model.jnt_qposadr[sim.model.actuator_trnid[i, 0]]
-                sim.data.ctrl[i] = sim.data.qpos[idx] + action[i]
+                sim.data.ctrl[i] = sim.data.qpos[idx] + action[i][0]
 
 
 def mocap_set_action(sim, action):
@@ -45,8 +47,9 @@ def mocap_set_action(sim, action):
     constraint optimizer tries to center the welded body on the mocap.
     """
     if sim.model.nmocap > 0:
-        action, _ = np.split(action, (sim.model.nmocap * 7, ))
-        action = action.reshape(sim.model.nmocap, 7)
+        # action, _ = np.split(action, (sim.model.nmocap * 7, ))
+        action = action[:7,:].copy()
+        action = action.T
 
         pos_delta = action[:, :3]
         quat_delta = action[:, 3:]
@@ -71,7 +74,6 @@ def reset_mocap2body_xpos(sim):
     """Resets the position and orientation of the mocap bodies to the same
     values as the bodies they're welded to.
     """
-
     if (sim.model.eq_type is None or
         sim.model.eq_obj1id is None or
         sim.model.eq_obj2id is None):

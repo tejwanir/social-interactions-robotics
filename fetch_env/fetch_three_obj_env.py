@@ -220,52 +220,58 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
     def _step_callback(self):
         self.current_time += 1
 
-    def _set_action(self, action):
-        assert action.shape == (4,)
-        action = action.copy()  # ensure that we don't change the action outside of this scope
-        pos_ctrl, gripper_ctrl = action[:3], action[3]
-
+    def _set_action(self, actions):
+        assert actions.shape == (len(self.robot_configs), 4)
+        
+        actions = actions.copy()  # ensure that we don't change the action outside of this scope
+        pos_ctrl, gripper_ctrl = actions[:, :3], actions[:, 3]
+        
         pos_ctrl *= 0.05  # limit maximum change in position
-        rot_ctrl = [1., 0., 1., 0.]  # fixed rotation of the end effector, expressed as a quaternion
+        rot_ctrl = np.array(len(self.robot_configs) * [[1., 0., 1., 0.]])  # fixed rotation of the end effector, expressed as a quaternion
         gripper_ctrl = np.array([gripper_ctrl, gripper_ctrl])
-        assert gripper_ctrl.shape == (2,)
-        action = np.concatenate([pos_ctrl, rot_ctrl, gripper_ctrl])
-
+        assert gripper_ctrl.shape == (len(self.robot_configs), 2)
+        actions = np.concatenate((pos_ctrl, rot_ctrl, gripper_ctrl), axis=1)
+        
         # Apply action to simulation.
-        mujoco_utils.ctrl_set_action(self.sim, action)
-        mujoco_utils.mocap_set_action(self.sim, action)
+        mujoco_utils.ctrl_set_action(self.sim, actions.T)
+        mujoco_utils.mocap_set_action(self.sim, actions.T)
 
     def _get_obs(self):
         # get gripper positions
-        grip_pos = self.sim.data.get_site_xpos('robot0:grip')
+        out = {}
+        for config in self.robot_configs:
+            r_name = config.name
+            grip_pos = self.sim.data.get_site_xpos(r_name + ':grip')
 
-        dt = self.sim.nsubsteps * self.sim.model.opt.timestep
-        grip_velp = self.sim.data.get_site_xvelp('robot0:grip') * dt
-        robot_qpos, robot_qvel = mujoco_utils.robot_get_obs(self.sim)
+            dt = self.sim.nsubsteps * self.sim.model.opt.timestep
+            grip_velp = self.sim.data.get_site_xvelp(r_name + ':grip') * dt
+            robot_qpos, robot_qvel = mujoco_utils.robot_get_obs(self.sim)
         
-        # get object features
-        object_features = []
-        for config in self.object_configs:
-            obj_name = config.name
-            object_pos = self.sim.data.get_site_xpos(obj_name)
-            # rotations
-            object_rot = rotations.mat2euler(self.sim.data.get_site_xmat(obj_name))
-            # velocities
-            object_velp = self.sim.data.get_site_xvelp(obj_name) * dt
-            object_velr = self.sim.data.get_site_xvelr(obj_name) * dt
-            # gripper state
-            object_rel_pos = object_pos - grip_pos
-            object_velp -= grip_velp
-            object_features.extend([object_pos.ravel(), object_rel_pos.ravel(), object_rot.ravel(),
-                                    object_velp.ravel(), object_velr.ravel()])
+            # get object features
+            object_features = []
+            for config in self.object_configs:
+                obj_name = config.name
+                object_pos = self.sim.data.get_site_xpos(obj_name)
+                # rotations
+                object_rot = rotations.mat2euler(self.sim.data.get_site_xmat(obj_name))
+                # velocities
+                object_velp = self.sim.data.get_site_xvelp(obj_name) * dt
+                object_velr = self.sim.data.get_site_xvelr(obj_name) * dt
+                # gripper state
+                object_rel_pos = object_pos - grip_pos
+                object_velp -= grip_velp
+                object_features.extend([object_pos.ravel(), object_rel_pos.ravel(), object_rot.ravel(),
+                                        object_velp.ravel(), object_velr.ravel()])
+            
+            gripper_state = robot_qpos[-2:]
+            gripper_vel = robot_qvel[-2:] * dt  # change to a scalar if the gripper is made symmetric
+            features = [grip_pos, gripper_state, grip_velp, gripper_vel]
         
-        gripper_state = robot_qpos[-2:]
-        gripper_vel = robot_qvel[-2:] * dt  # change to a scalar if the gripper is made symmetric
-        features = [grip_pos, gripper_state, grip_velp, gripper_vel]
-        features.extend(object_features)
-        obs = np.concatenate(features)
+            features.extend(object_features)
+            obs = np.concatenate(features)
 
-        out = { 'observation': obs.copy() }
+            out[r_name + '_observation'] = obs.copy()
+        
         # TODO: may add other features to the observation dict
         return out
 
@@ -301,7 +307,8 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
         }
 
     def _viewer_setup(self):
-        body_id = self.sim.model.body_name2id('robot0:gripper_link')
+        name0 = self.robot_configs[0].name
+        body_id = self.sim.model.body_name2id(name0 + ':gripper_link')
         lookat = self.sim.data.body_xpos[body_id]
         for idx, value in enumerate(lookat):
             self.viewer.cam.lookat[idx] = value
@@ -335,35 +342,40 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
             self.sim.data.set_joint_qpos(name, value)
         mujoco_utils.reset_mocap_welds(self.sim)
         self.sim.forward()
-
+        
         # Move end effector into position.
         if self.initial_gripper_xpos is None:
-            self.init_gripper = np.array([-0.498, 0.005, -0.431]) + \
-                    self.sim.data.get_site_xpos('robot0:grip')
-            gripper_target = np.array([-0.498 + initial_qpos['robot0:gripper_offset'][0], \
-                    0.005 + initial_qpos['robot0:gripper_offset'][1], \
-                    -0.431 + initial_qpos['robot0:gripper_offset'][2]]) + \
-                    self.sim.data.get_site_xpos('robot0:grip')
-            gripper_rotation = np.array([1., 0., 1., 0.])
-            self.sim.data.set_mocap_pos('robot0:mocap', gripper_target)
-            self.sim.data.set_mocap_quat('robot0:mocap', gripper_rotation)
+            for config in self.robot_configs:
+                r_name = config.name
+                self.init_gripper = np.array([-0.498, 0.005, -0.431]) + \
+                        self.sim.data.get_site_xpos(r_name + ':grip')
+                gripper_target = np.array([-0.498 + initial_qpos[r_name + ':gripper_offset'][0], \
+                        0.005 + initial_qpos[r_name + ':gripper_offset'][1], \
+                        -0.431 + initial_qpos[r_name + ':gripper_offset'][2]]) + \
+                        self.sim.data.get_site_xpos(r_name + ':grip')
+                gripper_rotation = np.array([1., 0., 1., 0.])
+                self.sim.data.set_mocap_pos(r_name + ':mocap', gripper_target)
+                self.sim.data.set_mocap_quat(r_name + ':mocap', gripper_rotation)
+            
             for _ in range(10):
                 self.sim.step()
 
             # Extract information for sampling goals.
+            '''
             self.init_gripper_pos = gripper_target
             self.init_gripper_rot = gripper_rotation
             self.initial_gripper_xpos = self.sim.data.get_site_xpos('robot0:grip').copy()
-            self.height_offset = self.sim.data.get_site_xpos('Small_Square')[2]
-        else:  # just move to the stored gripper position if already have one
+            self.height_offset = self.sim.data.get_site_xpos('Small_Square')[2] #TODO: Hardcoded
+            '''
+        else:  # just move to the stored gripper position if already have one #TODO: Implement this
             self.sim.data.set_mocap_pos('robot0:mocap', self.init_gripper_pos)
             self.sim.data.set_mocap_quat('robot0:mocap', self.init_gripper_rot)
             for _ in range(10):
                 self.sim.step()
 
     def _is_success(self, obs):
-        for object_name in self.objects:
-            object_qpos = self.sim.data.get_joint_qpos(object_name+':joint')
+        for config in self.object_configs:
+            object_qpos = self.sim.data.get_joint_qpos(config.name+':joint')
             object_xpos = object_qpos[:3]
             if in_tray(object_xpos):
                 return True
@@ -379,8 +391,8 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
             return True
         reward = -np.inf
         tray_pos = np.array([0.68+0.8, 0.25+0.75, 0.401])
-        for object_name in self.objects:
-            object_qpos = self.sim.data.get_joint_qpos(object_name+':joint')
+        for config in self.object_configs:
+            object_qpos = self.sim.data.get_joint_qpos(config.name+':joint')
             object_xpos = object_qpos[:3]
             r = -np.linalg.norm(object_xpos - tray_pos)
             if r > reward:

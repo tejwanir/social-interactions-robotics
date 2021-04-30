@@ -40,9 +40,8 @@ class RobotEnv(gym.Env):
         # Set the action and observation space
         obs = self._get_obs()
         self.action_space = spaces.Box(-1., 1., shape=(n_actions,), dtype='float32')
-        obs_dict = { 'observation': spaces.Box(-np.inf, np.inf, shape=obs['observation'].shape, dtype='float32') }
+        obs_dict = {}
         for key in obs.keys():
-            if key == 'observation': continue
             obs_dict[key] = spaces.Box(-np.inf, np.inf, shape=obs[key].shape, dtype='float32')
         self.observation_space = spaces.Dict(obs_dict)
 

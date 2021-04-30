@@ -21,9 +21,9 @@ def main(headless):
         initial_qpos=init_qpos
    )
     while True:
-        action = np.random.uniform(low=-1., high=1., size=(env.action_space.shape[0]))
-        print(' action:', action)
-        # next_obs, reward, done, info = env.step(action)
+        action = np.random.uniform(low=-1., high=1., size=(len(env.robot_configs), env.action_space.shape[0]))
+        # print(' action:', action)
+        next_obs, reward, done, info = env.step(action)
         # print('  done:', done, ', reward:', reward)
         done = False
         env.sim.step()
@@ -31,10 +31,11 @@ def main(headless):
             env.render('rgb_array')
         else:
             env.render('human')
+        '''
         if done:
             env.reset()
             break
-
+        '''
 
 if __name__ == '__main__':
     main(headless=False)
