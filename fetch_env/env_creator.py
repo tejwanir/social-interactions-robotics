@@ -16,7 +16,7 @@ BASE_XML = '''
 	<worldbody>
 		<geom name="floor0" pos="0.8 0.75 0" size="3.0 3.0 1" type="plane" condim="3" material="floor_mat"></geom>
 		<body name="floor0" pos="0.8 0.75 0">
-			<site name="target0" pos="0.67 0.23 0.401" size="0.08 0.1 0.001" rgba="1 0 0 1" type="box"></site>
+
 		</body>
 
         {body}
@@ -130,6 +130,15 @@ OBJECT_XML = '''
 </body>
 '''
 
+TRAY_XML = '''
+<body name="{name}" pos="{pos}">
+	<joint name="{name}:joint" type="free" damping="1e+07"></joint>
+	<geom size="{size}" type="box" condim="3" name="{name}" rgba="{color} 1" mass="20"></geom>
+    <site name="{name}" pos="0 0 0" size="{size}" rgba="{color} 1" type="box"></site>
+</body>
+'''
+
+
 class RobotConfig():
     
     def __init__(
@@ -185,6 +194,26 @@ class ObjectConfig():
         self.y_range = y_range
         self.z_range = z_range
 
+class TrayConfig():
+    
+    def __init__(
+        self,
+        name,
+        size,
+        color,
+        pos=None,
+        quat=None,
+        table_name=None,
+        table_pos=(0,0)  # Values 0-1 that specify where on the table the trays are. (0.5, 0.5) is in the middle
+    ):
+        self.name = name
+        self.size = size
+        self.color = color
+        self.pos = pos
+        self.quat = quat
+        self.table_name = table_name
+        self.table_pos = table_pos
+
 def load_configs_from_json(path_to_json):
     json_text = open(path_to_json, 'r').read()
     env_config = json.loads(json_text)
@@ -204,19 +233,25 @@ def load_configs_from_json(path_to_json):
     object_configs = []
     for o_kwargs in env_config["Objects"]:
         object_configs.append(ObjectConfig(**o_kwargs))
+    
+    tray_configs = []
+    if "Trays" in env_config.keys():
+        for t_kwargs in env_config["Trays"]:
+            tray_configs.append(TrayConfig(**t_kwargs))
 
-    return robot_configs, table_configs, object_configs
+    return robot_configs, table_configs, object_configs, tray_configs
     
 # A class that enables you to specify the number of robots, tables, and objects in an environment.
 # It takes these specs and compiles them into an xml file that can be fed into Mujoco
 class EnvCreator():
     
     def __init__(self, path_to_json):
-        robot_configs, table_configs, object_configs = load_configs_from_json(path_to_json)    
+        robot_configs, table_configs, object_configs, tray_configs = load_configs_from_json(path_to_json)    
         self.robot_configs = robot_configs
         self.table_configs = table_configs
         self.object_configs = object_configs
-    
+        self.tray_configs = tray_configs
+
         self.create_xml()
 
     def create_xml(self, path_to_xml=None):
@@ -266,12 +301,23 @@ class EnvCreator():
             )
             body_xml += table_xml + '\n\n'
         
-        for i, config in enumerate(self.object_configs):
+        for i, config in enumerate(self.object_configs): #TODO: Specify the quat as well
             pos_str = str(config.pos[0]) + ' ' + str(config.pos[1]) + ' ' + str(config.pos[2])
             size_str = str(config.size[0]) + ' ' + str(config.size[1]) + ' ' + str(config.size[2])
             color_str = str(config.color[0]) + ' ' + str(config.color[1]) + ' ' + str(config.color[2])
             object_xml = OBJECT_XML.format(name=config.name, pos=pos_str, size=size_str, color=color_str)
             body_xml += object_xml + '\n\n'
+        
+        for i, config in enumerate(self.tray_configs): #TODO: Specify the quat as well
+            if config.pos:
+                pos_str = str(config.pos[0]) + ' ' + str(config.pos[1]) + ' ' + str(config.pos[2])
+            else:
+                pos_str = '0 0 0'
+            size_str = str(config.size[0]) + ' ' + str(config.size[1]) + ' ' + str(config.size[2])
+            color_str = str(config.color[0]) + ' ' + str(config.color[1]) + ' ' + str(config.color[2])
+            tray_xml = TRAY_XML.format(name=config.name, pos=pos_str, size=size_str, color=color_str)
+            body_xml += tray_xml + '\n\n'
+        
 
         full_xml = BASE_XML.format(body=body_xml)
         if path_to_xml:

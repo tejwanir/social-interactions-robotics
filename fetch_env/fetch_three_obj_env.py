@@ -62,7 +62,7 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
     """Superclass for all MuJoCo Fetch environments.
     """
 
-    def __init__(self, initial_qpos, robot_configs, table_configs, object_configs, n_substeps, initial_robot_pos=None, timelimit=50):
+    def __init__(self, initial_qpos, robot_configs, table_configs, object_configs, tray_configs, n_substeps, initial_robot_pos=None, timelimit=50):
         """Initializes a new Fetch environment.
 
         Args:
@@ -74,6 +74,7 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
         self.robot_configs = robot_configs
         self.table_configs = table_configs
         self.object_configs = object_configs
+        self.tray_configs = tray_configs
         model_path = MODEL_XML_PATH
 
         self.objects = get_obj_names()
@@ -126,7 +127,7 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
     
     @staticmethod
     def sample_env_from_json(path_to_json):
-        robot_configs, table_configs, object_configs = load_configs_from_json(path_to_json)    
+        robot_configs, table_configs, object_configs, tray_configs = load_configs_from_json(path_to_json)    
         new_pos = {}
 
         for r_config in robot_configs:
@@ -136,13 +137,13 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
                 new_pos[r_name + ':slide1'] = r_config.init_pos[1]
                 new_pos[r_name + ':slide2'] = r_config.init_pos[2]
             else:
-                t_config = list(filter(lambda x: x.name == r_config.table_name, table_configs))[0]
+                table_config = list(filter(lambda x: x.name == r_config.table_name, table_configs))[0]
                 pos, angle = FetchThreeObjEnv.get_position_relative_to_table(
                     r_config.side,
                     r_config.offset,
                     r_config.distance,
-                    t_config.pos,
-                    t_config.size
+                    table_config.pos,
+                    table_config.size
                 )
                 new_pos[r_name + ':slide0'] = pos[0]
                 new_pos[r_name + ':slide1'] = pos[1]
@@ -165,8 +166,37 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
                 pos[2] = np.random.uniform(o_config.z_range[0], o_config.z_range[1])
                 new_pos['joint:' + o_name] = pos + quat
         
-        return new_pos, robot_configs, table_configs, object_configs
+        for t_config in tray_configs:
+            t_name = t_config.name
+            if (t_config.pos != None):
+                new_pos[t_name + ':joint'] = t_config.pos + t_config.quat
+            else:
+                table_config = list(filter(lambda x: x.name == r_config.table_name, table_configs))[0]
+                pos = FetchThreeObjEnv.get_position_on_table(
+                    t_config.table_pos,
+                    t_config.size,
+                    table_config.pos,
+                    table_config.size
+                )
+                quat = t_config.quat
+                new_pos[t_name + ':joint'] = pos + quat
+
+        return new_pos, robot_configs, table_configs, object_configs, tray_configs
     
+    @staticmethod
+    def get_position_on_table(tray_pos, tray_size, table_pos, table_size):
+        tray_pos = np.array(tray_pos)
+        tray_size = np.array(tray_size)
+        table_pos = np.array(table_pos)
+        table_size = np.array(table_size)
+        
+        # This ensures the tray isn't hanging off the edge
+        inner_size = table_size - np.array([tray_size[0], tray_size[1], 0.])
+        mult_factor = np.array([tray_pos[0], tray_pos[1], 1])
+        
+        new_pos = mult_factor * inner_size + table_pos + np.array([0., 0., 0.001])
+        return list(new_pos)
+
     @staticmethod
     def get_position_relative_to_table(side, offset, distance, table_pos=[0., 0.], table_size=[0., 0.]):
         '''

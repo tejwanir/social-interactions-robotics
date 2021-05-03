@@ -9,7 +9,7 @@ def main(headless):
     if headless:
         GlfwContext(offscreen=True)
     
-    init_qpos, robot_configs, table_configs, object_configs = FetchThreeObjEnv.sample_env_from_json(
+    init_qpos, robot_configs, table_configs, object_configs, tray_configs = FetchThreeObjEnv.sample_env_from_json(
         os.path.join("fetch_env", "test_env.json")
     )
     print(init_qpos)
@@ -17,6 +17,7 @@ def main(headless):
         robot_configs=robot_configs,
         table_configs=table_configs,
         object_configs=object_configs,
+        tray_configs=tray_configs,
         n_substeps=20,
         initial_qpos=init_qpos
    )
