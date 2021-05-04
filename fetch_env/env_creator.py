@@ -150,6 +150,8 @@ class RobotConfig():
         side=None,
         offset=None,
         distance=None,
+        target_robots=None,
+        target_objects=None
     ):
         assert init_pos != None or table_name != None
         
@@ -160,6 +162,8 @@ class RobotConfig():
         self.side = side
         self.offset = offset
         self.distance = distance
+        self.target_robots = target_robots
+        self.target_objects = target_objects
  
 class TableConfig():
     

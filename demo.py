@@ -29,7 +29,7 @@ def main(headless):
         action = np.random.uniform(low=-1., high=1., size=(len(env.robot_configs), env.action_space.shape[0]))
         # print(' action:', action)
         next_obs, reward, done, info = env.step(action)
-        # print('  done:', done, ', reward:', reward)
+        print('  done:', done, ', reward:', reward)
         done = False
         env.sim.step()
         if headless:

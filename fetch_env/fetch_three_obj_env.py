@@ -3,6 +3,7 @@ import mujoco_py
 import numpy as np
 import os
 import json
+from collections import OrderedDict
 
 from fetch_env import rotations, robot_env, mujoco_utils
 from fetch_env.env_creator import load_configs_from_json
@@ -74,6 +75,12 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
         self.table_configs = table_configs
         self.object_configs = object_configs
         self.tray_configs = tray_configs
+
+        self.robot_dict = self.create_dict(robot_configs)
+        self.table_dict = self.create_dict(table_configs)
+        self.object_dict = self.create_dict(object_configs)
+        self.tray_dict = self.create_dict(tray_configs)
+
         model_path = MODEL_XML_PATH
 
         self.objects = get_obj_names()
@@ -93,6 +100,12 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
         for k, v in self.sim.model._sensor_name2id.items():
             self._touch_sensor_id_site_id.append((v, self.sim.model._site_name2id[k]))
             self._touch_sensor_id.append(v)
+    
+    def create_dict(self, configs):
+        d = {}
+        for config in configs:
+            d[config.name] = config
+        return d
 
     # Fetch methods
     # ----------------------------
@@ -372,7 +385,7 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
         # Running simulation one step forward (do it after updating positions)
         self.sim.forward()
 
-    def _reset_sim(self):
+    def _reset_sim(self): # TODO: Implement this
         # sample a new initial configuration
         initial_qpos = FetchThreeObjEnv.sample_env()
         self._env_setup(initial_qpos=initial_qpos)
@@ -440,18 +453,40 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
     def _compute_reward(self, obs, info):
         if info['is_success']:
             return True
-        reward = -np.inf
-        for config in self.object_configs:
-            # NOTE: The joint position is ever so slightly different and idk why
-            # object_qpos = self.sim.data.get_joint_qpos(config.name+':joint')
-            # object_xpos = object_qpos[:3]
+        reward_dict = OrderedDict()
+        
+        # First find the "human" robot and calculate their rewards
+        for config in self.robot_configs:
+            if config.task != 'human':
+                continue
+
+            reward = 0.
+            for obj_name in config.target_objects:
+                # NOTE: The joint position is ever so slightly different and idk why
+                # object_qpos = self.sim.data.get_joint_qpos(config.name+':joint')
+                # object_xpos = object_qpos[:3]
+                
+                obj_pos, _ = self._get_obj(obj_name)
+                tray_pos, _ = self._get_tray(self.object_dict[obj_name].target)
+                r = -np.linalg.norm(obj_pos - tray_pos)
+                if r > -np.inf:
+                    reward += r
+            reward_dict[config.name] = reward
+        
+        # Now calculate the rewards of all the robots trying to help and hinder
+        for config in self.robot_configs:
+            if config.task == 'human':
+                continue
             
-            obj_pos, _ = self._get_obj(config.name)
-            tray_pos, _ = self._get_tray(config.target)
-            r = -np.linalg.norm(obj_pos - tray_pos)
-            if r > reward:
-                reward = r
-        return reward
+            # You can only help or hinder robots with the "human" task
+            reward_dict[config.name] = 0
+            for target_name in config.target_robots:
+                if config.task == 'help':
+                    reward_dict[config.name] += reward_dict[target_name]
+                elif config.task == 'hinder':
+                    reward_dict[config.name] += -reward_dict[target_name]
+
+        return reward_dict
 
     def render(self, mode='human', width=500, height=500):
         return super(FetchThreeObjEnv, self).render(mode, width, height)
