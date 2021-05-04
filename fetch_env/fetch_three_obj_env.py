@@ -441,7 +441,6 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
         if info['is_success']:
             return True
         reward = -np.inf
-        tray_pos = np.array([0.68+0.8, 0.25+0.75, 0.401])
         for config in self.object_configs:
             # NOTE: The joint position is ever so slightly different and idk why
             # object_qpos = self.sim.data.get_joint_qpos(config.name+':joint')
