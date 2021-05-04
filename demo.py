@@ -2,12 +2,16 @@ import numpy as np
 import os
 
 from fetch_env.fetch_three_obj_env import FetchThreeObjEnv
+from fetch_env.env_creator import EnvCreator
 from mujoco_py import GlfwContext  # Requires GlfwContext so GLEW won't complain
 
 
 def main(headless):
     if headless:
         GlfwContext(offscreen=True)
+    
+    env_creator = EnvCreator(os.path.join('fetch_env', 'test_env.json'))
+    env_creator.create_xml(os.path.join('fetch_env', 'assets', 'full_env'))
     
     init_qpos, robot_configs, table_configs, object_configs, tray_configs = FetchThreeObjEnv.sample_env_from_json(
         os.path.join("fetch_env", "test_env.json")

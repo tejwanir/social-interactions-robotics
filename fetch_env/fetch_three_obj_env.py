@@ -34,14 +34,13 @@ POS_HALF_RANGE = {
 }
 
 
-def in_tray(pos):
+def in_tray(obj_pos, obj_size, tray_pos, tray_size):
     """Check if a position is in the tray.
     """
-    tray_pos = [0.67+0.8, 0.23+0.75, 0.401]
-    tray_half_range = [0.08, 0.1, 0.025]  # z is the height of the block
+    tray_half_range = [tray_size[0], tray_size[1], obj_size[2]]  # z is the height of the block
     for i, p in enumerate(tray_pos):
-        if pos[i] < p - tray_half_range[i] or \
-                pos[i] > p + tray_half_range[i]:
+        if obj_pos[i] < p - tray_half_range[i] or \
+                obj_pos[i] > p + tray_half_range[i]:
             return False
     return True
 
@@ -243,6 +242,24 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
 
         return table_pos, table_size
     
+    def _get_tray(self, tray_name):
+        tray_id = self.sim.model.body_name2id(tray_name)
+        tray_geom_id = self.sim.model.geom_name2id(tray_name)
+        
+        tray_pos = self.sim.data.body_xpos[tray_id]
+        tray_size = self.sim.model.geom_size[tray_geom_id]
+
+        return tray_pos, tray_size
+    
+    def _get_obj(self, obj_name):
+        obj_id = self.sim.model.body_name2id(obj_name)
+        obj_geom_id = self.sim.model.geom_name2id(obj_name)
+        
+        obj_pos = self.sim.data.body_xpos[obj_id]
+        obj_size = self.sim.model.geom_size[obj_geom_id]
+
+        return obj_pos, obj_size
+
     def _get_floor_level(self):
         # TODO: Hardcoded
         return 0.
@@ -405,9 +422,13 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
 
     def _is_success(self, obs):
         for config in self.object_configs:
-            object_qpos = self.sim.data.get_joint_qpos(config.name+':joint')
-            object_xpos = object_qpos[:3]
-            if in_tray(object_xpos):
+            # NOTE: The joint position is ever so slightly different and idk why
+            # object_qpos = self.sim.data.get_joint_qpos(config.name+':joint')
+            # object_xpos = object_qpos[:3]
+
+            obj_pos, obj_size = self._get_obj(config.name)
+            tray_pos, tray_size = self._get_tray(config.target)
+            if in_tray(obj_pos, obj_size, tray_pos, tray_size):
                 return True
         return False
 
@@ -422,9 +443,13 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
         reward = -np.inf
         tray_pos = np.array([0.68+0.8, 0.25+0.75, 0.401])
         for config in self.object_configs:
-            object_qpos = self.sim.data.get_joint_qpos(config.name+':joint')
-            object_xpos = object_qpos[:3]
-            r = -np.linalg.norm(object_xpos - tray_pos)
+            # NOTE: The joint position is ever so slightly different and idk why
+            # object_qpos = self.sim.data.get_joint_qpos(config.name+':joint')
+            # object_xpos = object_qpos[:3]
+            
+            obj_pos, _ = self._get_obj(config.name)
+            tray_pos, _ = self._get_tray(config.target)
+            r = -np.linalg.norm(obj_pos - tray_pos)
             if r > reward:
                 reward = r
         return reward

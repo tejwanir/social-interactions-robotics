@@ -144,6 +144,7 @@ class RobotConfig():
     def __init__(
         self,
         name,
+        task,
         init_pos=None,
         table_name=None,
         side=None,
@@ -153,6 +154,7 @@ class RobotConfig():
         assert init_pos != None or table_name != None
         
         self.name = name
+        self.task = task
         self.init_pos = init_pos
         self.table_name = table_name
         self.side = side
@@ -178,6 +180,7 @@ class ObjectConfig():
         name,
         size,
         color,
+        target,
         pos=None,
         quat=None,
         x_range=(0,0),
@@ -188,6 +191,7 @@ class ObjectConfig():
         self.name = name
         self.size = size
         self.color = color
+        self.target = target
         self.pos = pos
         self.quat = quat
         self.x_range = x_range
