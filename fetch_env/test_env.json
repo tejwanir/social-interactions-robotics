@@ -6,7 +6,7 @@
             "side": [0,-1],
             "offset": 0.0,
             "distance": 0.3,
-            "task": "human",
+            "task": "move_object",
             "target_objects": ["Small_Square"]
         },
         {

@@ -456,9 +456,9 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
             return True
         reward_dict = OrderedDict()
         
-        # First find the "human" robot and calculate their rewards
+        # First find the "move_object" robot and calculate their rewards
         for config in self.robot_configs:
-            if config.task != 'human':
+            if config.task != 'move_object':
                 continue
 
             reward = 0.
@@ -476,10 +476,10 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
         
         # Now calculate the rewards of all the robots trying to help and hinder
         for config in self.robot_configs:
-            if config.task == 'human':
+            if config.task == 'move_object':
                 continue
             
-            # You can only help or hinder robots with the "human" task
+            # You can only help or hinder robots with the "move_object" task
             reward_dict[config.name] = 0
             for target_name in config.target_robots:
                 if config.task == 'help':
