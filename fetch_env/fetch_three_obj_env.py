@@ -279,7 +279,8 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
 
     def _step_callback(self):
         self.current_time += 1
-
+    
+    # TODO: Specify actions as a dictionary instead of array
     def _set_action(self, actions):
         assert actions.shape == (len(self.robot_configs), 4)
         
