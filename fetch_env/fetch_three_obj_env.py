@@ -280,7 +280,6 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
     def _step_callback(self):
         self.current_time += 1
     
-    # TODO: Specify actions as a dictionary instead of array
     def _set_action(self, action_dict):
         # Convert the dictionary into a numpy array
         actions = np.zeros((len(self.robot_configs), 4))
