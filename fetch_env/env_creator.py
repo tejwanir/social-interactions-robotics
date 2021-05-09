@@ -24,11 +24,15 @@ BASE_XML = '''
 		<light directional="true" ambient="0.2 0.2 0.2" diffuse="0.8 0.8 0.8" specular="0.3 0.3 0.3" castshadow="false" pos="0 0 4" dir="0 0 -1" name="light0"></light>
 	</worldbody>
 
-	<actuator>
-		<position ctrllimited="true" ctrlrange="0 0.2" joint="robot0:l_gripper_finger_joint" kp="30000" name="robot0:l_gripper_finger_joint" user="1"></position>
-		<position ctrllimited="true" ctrlrange="0 0.2" joint="robot0:r_gripper_finger_joint" kp="30000" name="robot0:r_gripper_finger_joint" user="1"></position>
-	</actuator>
+    {grippers}
 </mujoco>
+'''
+
+GRIPPER_XML = '''
+	<actuator>
+		<position ctrllimited="true" ctrlrange="0 0.2" joint="{name}:l_gripper_finger_joint" kp="30000" name="{name}:l_gripper_finger_joint" user="1"></position>
+		<position ctrllimited="true" ctrlrange="0 0.2" joint="{name}:r_gripper_finger_joint" kp="30000" name="{name}:r_gripper_finger_joint" user="1"></position>
+	</actuator>
 '''
 
 SHARED_XML = '''
@@ -273,6 +277,7 @@ class EnvCreator():
 
         # Create the env xml
         body_xml = ''
+        gripper_xml = ''
         table_robots = defaultdict(lambda: [])
         for i, config in enumerate(self.robot_configs):   
             robot_xml = open(os.path.join('fetch_env', 'assets', 'full_env', 'robot.xml'), 'r').read()
@@ -298,6 +303,7 @@ class EnvCreator():
                 robot_xml = robot_xml.format(angle="0 0 0")
             '''
             body_xml += robot_xml + '\n\n'
+            gripper_xml += GRIPPER_XML.format(name=config.name) + '\n'
 
         for i, config in enumerate(self.table_configs):
             pos_str = str(config.pos[0]) + ' ' + str(config.pos[1]) + ' ' + str(config.pos[2])
@@ -327,7 +333,7 @@ class EnvCreator():
             body_xml += tray_xml + '\n\n'
         
 
-        full_xml = BASE_XML.format(body=body_xml)
+        full_xml = BASE_XML.format(body=body_xml, grippers=gripper_xml)
         if path_to_xml:
             f = open(os.path.join(path_to_xml, 'shared.xml'), "w")
             f.write(shared_xml)

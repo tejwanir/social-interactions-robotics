@@ -293,7 +293,7 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
         
         pos_ctrl *= 0.05  # limit maximum change in position
         rot_ctrl = np.array(len(self.robot_configs) * [[1., 0., 1., 0.]])  # fixed rotation of the end effector, expressed as a quaternion
-        gripper_ctrl = np.array([gripper_ctrl, gripper_ctrl])
+        gripper_ctrl = np.array([gripper_ctrl, gripper_ctrl]).T
         assert gripper_ctrl.shape == (len(self.robot_configs), 2)
         actions = np.concatenate((pos_ctrl, rot_ctrl, gripper_ctrl), axis=1)
         

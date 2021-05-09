@@ -31,10 +31,10 @@ def ctrl_set_action(sim, action):
     if sim.data.ctrl is not None:
         for i in range(action.shape[0]):
             if sim.model.actuator_biastype[i] == 0:
-                sim.data.ctrl[i] = action[i][0]
+                sim.data.ctrl[i:i+2] = action[i][:]
             else:
                 idx = sim.model.jnt_qposadr[sim.model.actuator_trnid[i, 0]]
-                sim.data.ctrl[i] = sim.data.qpos[idx] + action[i][0]
+                sim.data.ctrl[i:i+2] = sim.data.qpos[idx] + action[i][:]
 
 
 def mocap_set_action(sim, action):

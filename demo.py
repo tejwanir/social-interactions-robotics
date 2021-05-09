@@ -31,7 +31,6 @@ def main(headless):
         action_dict['robot0'] = action[0]
         action_dict['robot1'] = action[1]
 
-        # print(' action:', action)
         next_obs, reward, done, info = env.step(action_dict)
         print('  done:', done, ', reward:', reward)
         done = False
