@@ -281,9 +281,13 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
         self.current_time += 1
     
     # TODO: Specify actions as a dictionary instead of array
-    def _set_action(self, actions):
-        assert actions.shape == (len(self.robot_configs), 4)
-        
+    def _set_action(self, action_dict):
+        # Convert the dictionary into a numpy array
+        actions = np.zeros((len(self.robot_configs), 4))
+        for i, config in enumerate(self.robot_configs):
+            actions[i] = action_dict[config.name]
+        actions = np.clip(actions, self.action_space.low, self.action_space.high)
+
         actions = actions.copy()  # ensure that we don't change the action outside of this scope
         pos_ctrl, gripper_ctrl = actions[:, :3], actions[:, 3]
         

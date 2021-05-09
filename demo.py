@@ -27,8 +27,12 @@ def main(headless):
    )
     while True:
         action = np.random.uniform(low=-1., high=1., size=(len(env.robot_configs), env.action_space.shape[0]))
+        action_dict = {}
+        action_dict['robot0'] = action[0]
+        action_dict['robot1'] = action[1]
+
         # print(' action:', action)
-        next_obs, reward, done, info = env.step(action)
+        next_obs, reward, done, info = env.step(action_dict)
         print('  done:', done, ', reward:', reward)
         done = False
         env.sim.step()

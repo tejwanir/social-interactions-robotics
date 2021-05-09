@@ -62,7 +62,6 @@ class RobotEnv(gym.Env):
         return [seed]
 
     def step(self, action):
-        action = np.clip(action, self.action_space.low, self.action_space.high)
         self._set_action(action)
         self.sim.step()
         self._step_callback()
