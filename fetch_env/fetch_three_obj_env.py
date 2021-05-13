@@ -330,7 +330,6 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
             gripper_state = robot_qpos[-2:]
             gripper_vel = robot_qvel[-2:] * dt  # change to a scalar if the gripper is made symmetric
             features = [grip_pos, gripper_state, grip_velp, gripper_vel]
-        
             features.extend(object_features)
             obs = np.concatenate(features)
 
