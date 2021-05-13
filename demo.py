@@ -25,7 +25,7 @@ def main(headless):
         n_substeps=20,
         initial_qpos=init_qpos
     )
-    planner = SimplePlanner('robot0', object_configs)
+    planner = SimplePlanner('robot0', robot_configs[0], object_configs, tray_configs)
     next_obs = None
     while True:
         action = np.random.uniform(low=-1., high=1., size=(len(env.robot_configs), env.action_space.shape[0]))
