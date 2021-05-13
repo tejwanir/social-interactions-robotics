@@ -15,7 +15,7 @@
             "side": [0,1],
             "offset": 0.0,
             "distance": 0.3,
-            "task": "help",
+            "task": "hinder",
             "target_robots": ["robot0"]
         }
     ],

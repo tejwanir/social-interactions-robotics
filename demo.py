@@ -4,7 +4,7 @@ import os
 from fetch_env.fetch_three_obj_env import FetchThreeObjEnv
 from fetch_env.env_creator import EnvCreator
 from mujoco_py import GlfwContext  # Requires GlfwContext so GLEW won't complain
-from planners import SimplePlanner
+from planners import SimplePlanner, HinderPlanner
 
 def main(headless):
     if headless:
@@ -26,12 +26,17 @@ def main(headless):
         initial_qpos=init_qpos
     )
     planner = SimplePlanner('robot0', robot_configs[0], object_configs, tray_configs)
+    hinder_planner = HinderPlanner('robot1', robot_configs[1], object_configs, tray_configs)
+
     next_obs = None
     while True:
         action = np.random.uniform(low=-1., high=1., size=(len(env.robot_configs), env.action_space.shape[0]))
         action_dict = {}
         action_dict['robot0'] = planner.move(next_obs) if next_obs else action[0]
-        action_dict['robot1'] = action[1]
+        if robot_configs[1].task == 'hinder':
+            action_dict['robot1'] = hinder_planner.move(next_obs) if next_obs else action[1]
+        else:
+            action_dict['robot1'] = action[1]
         
         next_obs, reward, done, info = env.step(action_dict)
         print('  done:', done, ', reward:', reward)
