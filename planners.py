@@ -122,40 +122,24 @@ class HinderPlanner(BasePlanner):
         self.up_count = 0
         self.move_count = 0
 
+        self.middle = None
+
     def move(self, obs):
         robot_obs = obs[self.name + '_observation']
         obs_dict = self.convert_obs(robot_obs)
-
-        if self.state == 0: # Go towards the cube
+        
+        if self.state == 0: # Calculate position between the object and the tray
             obj_pos = obs_dict[self.object_configs[0].name]['pos']
-            obj_pos[2] += 0.02
-            grip_pos = obs_dict[self.name]['pos']
+            tray_pos = obs_dict[self.object_configs[0].target]['pos']
             
-            rel_pos = obj_pos - grip_pos
-            abs_rel_pos = abs(rel_pos)
-            if abs_rel_pos[0] < 0.01 and abs_rel_pos[1] < 0.01 and abs_rel_pos[2] < 0.01:
-                self.state = 1
-                self.close_count = 0
-            return np.array(list(obj_pos - grip_pos) + [1.])
-        elif self.state == 1: # Close the gripper
-            self.close_count += 1
-            if self.close_count == 15:
-                self.state = 2
-                self.up_count = 0
-            return np.array([0., 0., 0., -0.1])
-        elif self.state == 2: # Lift straight up
-            self.up_count += 1
-            if self.up_count == 10:
-                self.state = 3
-                self.move_count = 0
-            return np.array([0., 0., 0.1, -0.1])
-        elif self.state == 3: # Move it away from the other arm
-            self.move_count += 1
-            if self.move_count == 20:
-                self.state = 4
-            return np.array([-0.1, -0.1, 0.1, -0.1])
-        else: # Release the object
-            return np.array([0., 0., 0., 0.1])
+            self.middle = (tray_pos + obj_pos)/2.
+            self.middle[2] += 0.04
+            self.state = 1
+            return np.array([0., 0., 0., 1.])
+        elif self.state == 1: # Move towards that middle position
+            grip_pos = obs_dict[self.name]['pos']
+            rel_pos = self.middle - grip_pos
+            return np.array(list(rel_pos) + [1.])
 
 class HelpPlanner(BasePlanner):
     
