@@ -2,11 +2,13 @@ import numpy as np
 
 class BasePlanner():
     
-    def __init__(self, name, robot_config, object_configs, tray_configs):
+    def __init__(self, name, robot_configs, object_configs, tray_configs):
         self.name = name
-        self.robot_config = robot_config
+        self.robot_configs = robot_configs
         self.object_configs = object_configs
         self.tray_configs = tray_configs
+
+        self.config = [config for config in robot_configs if config.name == name][0]
     
     def convert_obs(self, obs):
         # First get the robot obs
@@ -32,6 +34,7 @@ class BasePlanner():
             o_obs['velr'] = obs[i*15+12:i*15+15]
             obs_dict[o_name] = o_obs
         
+        # Get all of the tray observations
         obs = obs[len(self.object_configs)*15:]
         for i, config in enumerate(self.tray_configs):
             t_obs = {}
@@ -39,6 +42,20 @@ class BasePlanner():
 
             t_obs['pos'] = obs[i*3:i*3+3]
             obs_dict[t_name] = t_obs
+        
+        # Get all of the other robot observations
+        # These observations are different than the itself because they are more limited ie less info
+        obs = obs[len(self.tray_configs)*3:]
+        for i, config in enumerate(self.robot_configs):
+            or_name = config.name
+            if or_name == self.name:
+                i -= 1
+                continue
+     
+            or_obs = {}
+            or_obs['pos'] = obs[i*6:i*6+3]
+            or_obs['velp'] = obs[i*6+3:i*6+6]
+            obs_dict[or_name] = or_obs
 
         return obs_dict
 
@@ -47,7 +64,7 @@ class SimplePlanner(BasePlanner):
     def __init__(self, name, robot_config, object_configs, tray_configs):
         super().__init__(name, robot_config, object_configs, tray_configs)
 
-        self.target = self.robot_config.target_objects[0]
+        self.target = self.config.target_objects[0]
         self.target_tray = [config for config in self.object_configs if config.name == self.target][0].target
 
         self.state = 0
@@ -140,3 +157,27 @@ class HinderPlanner(BasePlanner):
         else: # Release the object
             return np.array([0., 0., 0., 0.1])
 
+class HelpPlanner(BasePlanner):
+    
+    def __init__(self, name, robot_config, object_configs, tray_configs):
+        super().__init__(name, robot_config, object_configs, tray_configs)
+        
+        self.close_count = 0
+        self.up_count = 0
+        self.move_count = 0
+
+    def move(self, obs):
+        robot_obs = obs[self.name + '_observation']
+        obs_dict = self.convert_obs(robot_obs)
+        
+        # Get the position of the two robot's grippers
+        o_grip_pos = obs_dict[self.config.target_robots[0]]['pos']
+        grip_pos = obs_dict[self.name]['pos']
+        rel_pos = o_grip_pos - grip_pos
+        
+        squared_distance = sum(np.square(rel_pos))
+        if squared_distance > 0.1:
+            return np.array(list(rel_pos) + [1.])
+        else:
+            return np.array([0., 0., 0., 1.])
+            

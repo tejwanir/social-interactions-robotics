@@ -333,12 +333,22 @@ class FetchThreeObjEnv(robot_env.RobotEnv):
                 tray_name = config.name
                 tray_pos = self.sim.data.get_site_xpos(tray_name)
                 tray_features.extend([tray_pos.ravel()])
-                
+            
+            # get the features of the other robots
+            robot_features = []
+            for config in self.robot_configs:
+                if config.name == r_name:
+                    continue
+                r_grip_pos = self.sim.data.get_site_xpos(config.name + ':grip')
+                r_grip_velp = self.sim.data.get_site_xvelp(config.name + ':grip') * dt
+                robot_features.extend([r_grip_pos, r_grip_velp])
+
             gripper_state = robot_qpos[-2:]
             gripper_vel = robot_qvel[-2:] * dt  # change to a scalar if the gripper is made symmetric
             features = [grip_pos, gripper_state, grip_velp, gripper_vel]
             features.extend(object_features)
             features.extend(tray_features)
+            features.extend(robot_features)
             obs = np.concatenate(features)
 
             out[r_name + '_observation'] = obs.copy()
